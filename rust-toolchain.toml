@@ -1,0 +1,5 @@
+[toolchain]
+channel = "stable"
+targets = ["wasm32-wasip1"]
+# rust-src needed for rust-analyzer
+components = ["rust-src"]

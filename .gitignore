@@ -1,0 +1,8 @@
+# cargo target
+/target
+
+# nix packages result
+/result
+
+# direnv folder
+.direnv

@@ -1,0 +1,15 @@
+version: "2"
+plugins:
+  - name: rust
+    wasm:
+      url: file://../result/bin/sqlc-gen-rust.wasm
+sql:
+  - schema: "schema/postgresql/schema.sql"
+    queries: "schema/postgresql/query.sql"
+    engine: "postgresql"
+    codegen:
+      - plugin: rust
+        out: sqlx/src/db
+        options:
+          driver: "sqlx"
+          debug: true
