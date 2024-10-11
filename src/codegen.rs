@@ -40,9 +40,10 @@ struct GenField {
 impl quote::ToTokens for GenField {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let field_name = format_ident!("{}", ident::to_snake(self.name.as_str()));
-        let field_type = match self.struct_type.len() {
-            0 => convert_postgres_type(self.type_.as_str(), self.not_null),
-            _ => quote::quote! { self.struct_type },
+        let field_type = if self.struct_type.is_empty() {
+            convert_postgres_type(self.type_.as_str(), self.not_null)
+        } else {
+            quote::quote! { self.struct_type }
         };
         quote::quote! { #field_name: #field_type }.to_tokens(tokens);
     }
@@ -83,22 +84,6 @@ impl<'query> quote::ToTokens for GenQuery<'query> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let func_name = quote::format_ident!("{}", ident::to_snake(self.query.name.as_str()));
         let sql = self.query.text.replace('\n', " ").replace("  ", " ");
-
-        let args_tokens: Vec<proc_macro2::TokenStream> = self
-            .query
-            .params
-            .iter()
-            .filter_map(|param| match &param.column {
-                Some(column) => {
-                    let col_name = format_ident!("{}", ident::to_snake(column.name.as_str()));
-                    let col_type_name = column.r#type.as_ref().unwrap().name.as_str();
-
-                    let col_type = convert_postgres_type(col_type_name, column.not_null);
-                    Some(quote::quote! { #col_name: #col_type })
-                }
-                None => None,
-            })
-            .collect();
 
         let params = self.params.clone();
         let structs_ = self.structs.as_slice();
@@ -146,7 +131,11 @@ impl Generator {
 
     fn find_or_create_struct(&self, name: &str, cols: &[plugin::Column]) -> (&GenStruct, bool) {
         if self.struct_exists(name, cols) {
-            return (self.struct_find(name, cols).unwrap(), false);
+            return (
+                self.struct_find(name, cols)
+                    .expect("existing struct should be found"),
+                false,
+            );
         }
         let mut struct_ = GenStruct {
             name: String::from(name),
@@ -156,14 +145,20 @@ impl Generator {
         for col in cols {
             let field = GenField {
                 name: ident::to_upper_camel(col.name.as_str()),
-                type_: col.r#type.as_ref().unwrap().name.as_str().to_string(),
+                type_: col
+                    .r#type
+                    .as_ref()
+                    .expect("col.type expected")
+                    .name
+                    .as_str()
+                    .to_string(),
                 not_null: col.not_null,
                 struct_type: String::new(),
             };
             struct_.fields.push(field);
         }
         self.structs.push(Box::new(struct_));
-        (self.structs.last().unwrap(), true)
+        (self.structs.last().expect("last struct should exist"), true)
     }
 
     fn gen_queries_file(&self) -> String {
@@ -184,7 +179,7 @@ impl Generator {
                         name: ident::to_snake(info_struct.name.as_str()),
                         type_: info_struct.name.clone(),
                     };
-                    new_structs.push(struct_);
+                    new_structs.push(info_struct);
                     struct_
                 }
                 1..3 => Params::DBType(
@@ -195,10 +190,16 @@ impl Generator {
                             if param.column.is_none() {
                                 return None;
                             }
-                            let col = param.column.as_ref().unwrap();
+                            let col = param.column.as_ref().expect("param.column expected");
                             Some((
-                                ident::to_snake(col.name),
-                                col.r#type.as_ref().unwrap().name.as_str(),
+                                ident::to_snake(col.name.as_str()),
+                                String::from(
+                                    col.r#type
+                                        .as_ref()
+                                        .expect("col.type expected")
+                                        .name
+                                        .as_str(),
+                                ),
                                 col.not_null,
                             ))
                         })

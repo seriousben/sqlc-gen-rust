@@ -3,6 +3,7 @@ use std::error::Error;
 use std::io;
 use std::io::prelude::*;
 
+use prost::bytes::Buf;
 use prost::Message;
 
 mod codegen;
@@ -20,10 +21,8 @@ struct PluginOption {
     pub debug: bool,
 }
 
-fn deserialize_codegen_request(
-    mut buf: &[u8],
-) -> Result<plugin::GenerateRequest, prost::DecodeError> {
-    plugin::GenerateRequest::decode(&mut buf)
+fn deserialize_codegen_request(buf: &[u8]) -> Result<plugin::GenerateRequest, prost::DecodeError> {
+    plugin::GenerateRequest::decode(buf)
 }
 
 fn serialize_codegen_response(resp: &plugin::GenerateResponse) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -49,8 +48,9 @@ fn handle_option_debug(
 fn process_request() -> Result<(), Box<dyn Error>> {
     let stdin = io::stdin();
     let mut stdin = stdin.lock();
-    let buffer = stdin.fill_buf()?;
-    let req = deserialize_codegen_request(buffer)?;
+    let mut buffer: Vec<u8> = Vec::new();
+    _ = stdin.read_to_end(&mut buffer).unwrap();
+    let req = deserialize_codegen_request(buffer.as_slice())?;
 
     let plugin_option: PluginOption = serde_json::from_slice(req.plugin_options.as_slice())?;
 
