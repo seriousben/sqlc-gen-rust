@@ -2,24 +2,17 @@
 
 ## Roadmap to next release
 
-## Codegen
+### Features
 
-- [] Allow using normal function arguments instead of always using structs for single param queries
+- [ ] Support for all sqlc cmd types
+- [ ] First release
+- [ ] High level documentation
 
-## sqlc feature support
 
-- [] Create kitchen sink schema example
+### Chores
 
-## Chores
-
-- [] GitHub Actions to test and manage releases
-- [] Make examples runnable
-- [] Ensure examples compile
-- [] Use new constuctors
-
-## Other
-
-- [] Ensure support for sqlx migrations
+- [ ] GitHub Actions to test and manage releases
+- [ ] Make examples runnable and testable
 
 ## Future
 
