@@ -1,4 +1,6 @@
-# sql-gen-rust
+# sqlc-gen-rust
+
+https://github.com/sqlc-dev/sqlc Rust plugin to generate https://github.com/launchbadge/sqlx models and queries from SQL migrations, schema, queries.
 
 ```yml
 version: "2"
