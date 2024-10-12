@@ -1,11 +1,13 @@
+use proc_macro2::TokenStream;
 use quote::format_ident;
+use quote::ToTokens;
 
 use crate::ident;
 use crate::plugin;
 
 #[derive(Debug, Clone)]
 enum Params {
-    DBType(Vec<(String, String, bool)>),
+    DBType(Vec<plugin::Column>),
     Struct { name: String, type_: String },
     None,
 }
@@ -14,41 +16,40 @@ impl quote::ToTokens for Params {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         match self {
             Params::DBType(params) => {
-                let param_tokens = params.iter().map(|(name, type_, not_null)| {
-                    let field_name = format_ident!("{}", ident::to_snake(name.as_str()));
-                    let field_type = convert_postgres_type(type_.as_str(), *not_null);
+                eprintln!("Params::ToTokens: {self:?}");
+                let param_tokens = params.iter().map(|col| {
+                    let field_name = format_ident!("{}", ident::to_snake(col.name.as_str()));
+                    let field_type = convert_postgres_type(col);
                     quote::quote! { #field_name: #field_type }
                 });
                 quote::quote! { #(#param_tokens),* }.to_tokens(tokens);
             }
             Params::Struct { name, type_ } => {
+                eprintln!("Params::ToTokens: {self:?}");
                 let field_name = format_ident!("{}", ident::to_snake(name.as_str()));
-                quote::quote! { #field_name: #type_ }.to_tokens(tokens);
+                let field_type = format_ident!("{}", type_);
+                quote::quote! { #field_name: #field_type }.to_tokens(tokens);
             }
             Params::None => {}
         }
     }
 }
 
+#[derive(Debug)]
 struct GenField {
-    name: String,
-    type_: String,
-    struct_type: String,
-    not_null: bool,
+    col: plugin::Column,
 }
 
 impl quote::ToTokens for GenField {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let field_name = format_ident!("{}", ident::to_snake(self.name.as_str()));
-        let field_type = if self.struct_type.is_empty() {
-            convert_postgres_type(self.type_.as_str(), self.not_null)
-        } else {
-            quote::quote! { self.struct_type }
-        };
-        quote::quote! { #field_name: #field_type }.to_tokens(tokens);
+        eprintln!("GenField::ToTokens: {self:?}");
+        let field_name = format_ident!("{}", ident::to_snake(self.col.name.as_str()));
+        let field_type = convert_postgres_type(&self.col);
+        quote::quote! { #field_name: #field_type }.to_tokens(tokens)
     }
 }
 
+#[derive(Debug)]
 pub struct GenStruct {
     name: String,
     fields: Vec<GenField>,
@@ -58,6 +59,7 @@ pub struct GenStruct {
 impl GenStruct {}
 impl quote::ToTokens for GenStruct {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        eprintln!("GenStruct::ToTokens: {self:?}");
         let fields = self.fields.as_slice();
 
         let struct_name = format_ident!("{}", ident::to_upper_camel(self.name.as_str()));
@@ -75,26 +77,30 @@ struct GenQuery<'query> {
     query: &'query plugin::Query,
     structs: Vec<&'query GenStruct>,
     params: Params,
-    return_: String,
+    return_: TokenStream,
 }
 
 impl<'query> GenQuery<'query> {}
 
 impl<'query> quote::ToTokens for GenQuery<'query> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        eprintln!("query::ToTokens: {:?}", self.query.name);
         let func_name = quote::format_ident!("{}", ident::to_snake(self.query.name.as_str()));
-        let sql = self.query.text.replace('\n', " ").replace("  ", " ");
+        let sql = format!("\n{}\n", self.query.text.as_str());
 
         let params = self.params.clone();
         let structs_ = self.structs.as_slice();
-        let return_tokens = format_ident!("{}", self.return_.as_str());
+        let return_tokens = self.return_.clone();
 
         quote::quote! {
             #(#structs_)*
 
             async fn #func_name(#params) -> Result<#return_tokens , Error> {
-                let rec = sqlx::query!(#sql);
+                let rec = sqlx::query!(
+                    #sql
+                );
             }
+
         }
         .to_tokens(tokens);
     }
@@ -143,18 +149,7 @@ impl Generator {
             cols: cols.to_vec(),
         };
         for col in cols {
-            let field = GenField {
-                name: ident::to_upper_camel(col.name.as_str()),
-                type_: col
-                    .r#type
-                    .as_ref()
-                    .expect("col.type expected")
-                    .name
-                    .as_str()
-                    .to_string(),
-                not_null: col.not_null,
-                struct_type: String::new(),
-            };
+            let field = GenField { col: col.clone() };
             struct_.fields.push(field);
         }
         self.structs.push(Box::new(struct_));
@@ -190,34 +185,40 @@ impl Generator {
                             if param.column.is_none() {
                                 return None;
                             }
-                            let col = param.column.as_ref().expect("param.column expected");
-                            Some((
-                                ident::to_snake(col.name.as_str()),
-                                String::from(
-                                    col.r#type
-                                        .as_ref()
-                                        .expect("col.type expected")
-                                        .name
-                                        .as_str(),
-                                ),
-                                col.not_null,
-                            ))
+                            let col = param.column.clone().expect("param.column expected");
+                            Some(col)
                         })
                         .collect(),
                 ),
                 0 => Params::None,
             };
-            let (ret_struct, _) = self.find_or_create_struct(
-                format!("{}Row", query.name).as_str(),
-                query.columns.as_slice(),
-            );
-            new_structs.push(ret_struct);
+            let return_name = if query.columns.len() == 1 {
+                let col = query.columns.first().expect("query.columns.first expected");
+                if col.name.is_empty() {
+                    convert_postgres_type(col)
+                } else {
+                    format_ident!("bool").to_token_stream()
+                }
+            } else {
+                let (ret_struct, _) = self.find_or_create_struct(
+                    format!("{}Row", query.name).as_str(),
+                    query.columns.as_slice(),
+                );
+                new_structs.push(ret_struct);
+                let ret_ident = format_ident!("{}", ret_struct.name.as_str());
+                if query.cmd == ":many" {
+                    let vec_ident = format_ident!("{}", "Vec");
+                    quote::quote! { #vec_ident<#ret_ident> }
+                } else {
+                    ret_ident.to_token_stream()
+                }
+            };
 
             GenQuery {
                 query,
                 structs: new_structs,
                 params,
-                return_: ret_struct.name.clone(),
+                return_: return_name,
             }
         });
         let file = quote::quote! {
@@ -228,169 +229,72 @@ impl Generator {
     }
 }
 
-fn convert_postgres_type(type_: &str, not_null: bool) -> proc_macro2::TokenStream {
-    match type_ {
-        "serial" | "serial4" | "pg_catalog.serial4" => {
-            if not_null {
-                quote::quote! { i32 }
-            } else {
-                quote::quote! { Option<i32> }
-            }
-        }
-        "bigserial" | "serial8" | "pg_catalog.serial8" => {
-            if not_null {
-                quote::quote! { i64 }
-            } else {
-                quote::quote! { Option<i64> }
-            }
-        }
-        "smallserial" | "serial2" | "pg_catalog.serial2" => {
-            if not_null {
-                quote::quote! { i16 }
-            } else {
-                quote::quote! { Option<i16> }
-            }
-        }
-        "integer" | "int" | "int4" | "pg_catalog.int4" => {
-            if not_null {
-                quote::quote! { i32 }
-            } else {
-                quote::quote! { Option<i32> }
-            }
-        }
-        "bigint" | "int8" | "pg_catalog.int8" => {
-            if not_null {
-                quote::quote! { i64 }
-            } else {
-                quote::quote! { Option<i64> }
-            }
-        }
-        "smallint" | "int2" | "pg_catalog.int2" => {
-            if not_null {
-                quote::quote! { i16 }
-            } else {
-                quote::quote! { Option<i16> }
-            }
-        }
+fn format_ident_path(path: &[&str]) -> proc_macro2::TokenStream {
+    let idents = path.iter().map(|s| format_ident!("{}", s));
+    quote::quote! { #(#idents)::* }
+}
+
+fn convert_postgres_type(col: &plugin::Column) -> proc_macro2::TokenStream {
+    let type_ = col
+        .r#type
+        .as_ref()
+        .expect("col type expected")
+        .name
+        .as_str();
+    let not_null = col.not_null;
+    let is_array = col.is_array;
+
+    let ident = match type_ {
+        "serial" | "serial4" | "pg_catalog.serial4" => format_ident!("i32").to_token_stream(),
+        "bigserial" | "serial8" | "pg_catalog.serial8" => format_ident!("i64").to_token_stream(),
+        "smallserial" | "serial2" | "pg_catalog.serial2" => format_ident!("i16").to_token_stream(),
+        "integer" | "int" | "int4" | "pg_catalog.int4" => format_ident!("i32").to_token_stream(),
+        "bigint" | "int8" | "pg_catalog.int8" => format_ident!("i64").to_token_stream(),
+        "smallint" | "int2" | "pg_catalog.int2" => format_ident!("i16").to_token_stream(),
         "float" | "double precision" | "float8" | "pg_catalog.float8" => {
-            if not_null {
-                quote::quote! { f64 }
-            } else {
-                quote::quote! { Option<f64> }
-            }
+            format_ident!("f64").to_token_stream()
         }
-        "real" | "float4" | "pg_catalog.float4" => {
-            if not_null {
-                quote::quote! { f32 }
-            } else {
-                quote::quote! { Option<f32> }
-            }
-        }
-        "numeric" | "pg_catalog.numeric" | "money" => {
-            if not_null {
-                quote::quote! { String }
-            } else {
-                quote::quote! { Option<String> }
-            }
-        }
-        "boolean" | "bool" | "pg_catalog.bool" => {
-            if not_null {
-                quote::quote! { bool }
-            } else {
-                quote::quote! { Option<bool> }
-            }
-        }
-        "json" | "jsonb" => {
-            if not_null {
-                quote::quote! { serde_json::Value }
-            } else {
-                quote::quote! { Option<serde_json::Value> }
-            }
-        }
-        "bytea" | "blob" | "pg_catalog.bytea" => quote::quote! { Vec<u8> },
-        "date" | "pg_catalog.date" => {
-            if not_null {
-                quote::quote! { chrono::NaiveDate }
-            } else {
-                quote::quote! { Option<chrono::NaiveDate> }
-            }
-        }
-        "time" | "pg_catalog.time" => {
-            if not_null {
-                quote::quote! { chrono::NaiveTime }
-            } else {
-                quote::quote! { Option<chrono::NaiveTime> }
-            }
-        }
-        "timestamp" | "pg_catalog.timestamp" => {
-            if not_null {
-                quote::quote! { chrono::NaiveDateTime }
-            } else {
-                quote::quote! { Option<chrono::NaiveDateTime> }
-            }
-        }
+        "real" | "float4" | "pg_catalog.float4" => format_ident!("f32").to_token_stream(),
+        "numeric" | "pg_catalog.numeric" | "money" => format_ident!("String").to_token_stream(),
+        "boolean" | "bool" | "pg_catalog.bool" => format_ident!("bool").to_token_stream(),
+        "json" | "jsonb" => format_ident_path(&["serde_json", "Value"]),
+        "bytea" | "blob" | "pg_catalog.bytea" => format_ident!("u8").to_token_stream(),
+        "date" | "pg_catalog.date" => format_ident_path(&["chrono", "NaiveDate"]),
+        "time" | "pg_catalog.time" => format_ident_path(&["chrono", "NaiveTime"]),
+        "timestamp" | "pg_catalog.timestamp" => format_ident_path(&["chrono", "NaiveDateTime"]),
         "timestamptz" | "pg_catalog.timestamptz" => {
-            if not_null {
-                quote::quote! { chrono::DateTime<chrono::Utc> }
-            } else {
-                quote::quote! { Option<chrono::DateTime<chrono::Utc>> }
-            }
+            let chrono_ident = format_ident!("chrono");
+            let datetime_ident = format_ident!("DateTime");
+            let utc_ident = format_ident!("Utc");
+            quote::quote! { #chrono_ident::#datetime_ident<#chrono_ident::#utc_ident> }
         }
         "text" | "pg_catalog.varchar" | "pg_catalog.bpchar" | "string" | "citext" | "name" => {
-            if not_null {
-                quote::quote! { String }
-            } else {
-                quote::quote! { Option<String> }
-            }
+            format_ident!("String").to_token_stream()
         }
-        "uuid" => {
-            if not_null {
-                quote::quote! { uuid::Uuid }
-            } else {
-                quote::quote! { Option<uuid::Uuid> }
-            }
+        "uuid" => format_ident_path(&["uuid", "Uuid"]),
+        "inet" | "cidr" => format_ident_path(&["std", "net", "IpAddr"]),
+        "macaddr" | "macaddr8" => format_ident_path(&["eui48", "MacAddress"]),
+        "ltree" | "lquery" | "ltxtquery" => format_ident!("String").to_token_stream(),
+        "interval" | "pg_catalog.interval" => format_ident_path(&["chrono", "Duration"]),
+        _ => format_ident_path(&["serde_json", "Value"]),
+    };
+
+    if is_array {
+        if not_null {
+            quote::quote! { Vec<#ident> }
+        } else {
+            quote::quote! { Option<Vec<#ident>> }
         }
-        "inet" => {
-            if not_null {
-                quote::quote! { std::net::IpAddr }
-            } else {
-                quote::quote! { Option<std::net::IpAddr> }
-            }
-        }
-        "cidr" => {
-            if not_null {
-                quote::quote! { std::net::IpAddr }
-            } else {
-                quote::quote! { Option<std::net::IpAddr> }
-            }
-        }
-        "macaddr" | "macaddr8" => {
-            if not_null {
-                quote::quote! { eui48::MacAddress }
-            } else {
-                quote::quote! { Option<eui48::MacAddress> }
-            }
-        }
-        "ltree" | "lquery" | "ltxtquery" => {
-            if not_null {
-                quote::quote! { String }
-            } else {
-                quote::quote! { Option<String> }
-            }
-        }
-        "interval" | "pg_catalog.interval" => {
-            if not_null {
-                quote::quote! { chrono::Duration }
-            } else {
-                quote::quote! { Option<chrono::Duration> }
-            }
-        }
-        _ => quote::quote! { Option<serde_json::Value> },
+    } else if not_null {
+        quote::quote! { #ident }
+    } else {
+        quote::quote! { Option<#ident> }
     }
 }
 
 fn pretty_print_ts(ts: proc_macro2::TokenStream) -> String {
     let syn_file = syn::parse2::<syn::File>(ts.clone())
-        .unwrap_or_else(|e| panic!("failed to parse tokens: {}: \n{}", e, ts,));
-    prettyplease::unparse(&syn_file)
+        .unwrap_or_else(|e| panic!("failed to parse tokens: {e:?}: \n{ts:?}\n===\n{ts}"));
+    let filestr = prettyplease::unparse(&syn_file);
+    filestr.replace("\\n", "\n")
 }

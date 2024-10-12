@@ -1,9 +1,8 @@
 #![warn(clippy::pedantic)]
 use std::error::Error;
-use std::io;
 use std::io::prelude::*;
+use std::{env, io};
 
-use prost::bytes::Buf;
 use prost::Message;
 
 mod codegen;
@@ -77,7 +76,7 @@ fn main() {
     match process_request() {
         Ok(()) => (),
         Err(e) => {
-            eprintln!("Error: failed to process request: {e}");
+            eprintln!("Error: failed to process request: {e:?}");
             std::process::exit(1)
         }
     };

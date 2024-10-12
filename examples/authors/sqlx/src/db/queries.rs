@@ -6,7 +6,12 @@ pub struct GetAuthorRow {
     bio: Option<String>,
 }
 async fn get_author(id: i64) -> Result<GetAuthorRow, Error> {
-    let rec = sqlx::query!("SELECT id, name, bio FROM authors WHERE id = $1 LIMIT 1");
+    let rec = sqlx::query!(
+        "
+SELECT id, name, bio FROM authors
+WHERE id = $1 LIMIT 1
+"
+    );
 }
 #[derive(Debug, Clone)]
 pub struct ListAuthorsRow {
@@ -14,8 +19,11 @@ pub struct ListAuthorsRow {
     name: String,
     bio: Option<String>,
 }
-async fn list_authors() -> Result<ListAuthorsRow, Error> {
-    let rec = sqlx::query!("SELECT id, name, bio FROM authors ORDER BY name");
+async fn list_authors() -> Result<Vec<ListAuthorsRow>, Error> {
+    let rec = sqlx::query!("
+SELECT id, name, bio FROM authors
+ORDER BY name
+");
 }
 #[derive(Debug, Clone)]
 pub struct CreateAuthorRow {
@@ -28,11 +36,21 @@ async fn create_author(
     bio: Option<String>,
 ) -> Result<CreateAuthorRow, Error> {
     let rec = sqlx::query!(
-        "INSERT INTO authors (  name, bio ) VALUES (  $1, $2 ) RETURNING id, name, bio"
+        "
+INSERT INTO authors (
+  name, bio
+) VALUES (
+  $1, $2
+)
+RETURNING id, name, bio
+"
     );
 }
 #[derive(Debug, Clone)]
 pub struct DeleteAuthorRow {}
 async fn delete_author(id: i64) -> Result<DeleteAuthorRow, Error> {
-    let rec = sqlx::query!("DELETE FROM authors WHERE id = $1");
+    let rec = sqlx::query!("
+DELETE FROM authors
+WHERE id = $1
+");
 }
