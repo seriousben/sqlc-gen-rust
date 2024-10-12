@@ -1,5 +1,24 @@
 # sql-gen-rust
 
+```yml
+version: "2"
+plugins:
+  - name: rust
+    wasm:
+      url: https://github.com/seriousben/sqlc-gen-rust/releases/download/V{VERSION}/sqlc-gen-RUST.wasm
+      sha256: {VERSION_SHA256}
+sql:
+  - schema: "schema/postgresql/schema.sql"
+    queries: "schema/postgresql/query.sql"
+    engine: "postgresql"
+    codegen:
+      - plugin: rust
+        out: sqlx/src/db
+        options:
+          driver: "sqlx"
+```
+
+
 ## Roadmap to next release
 
 ### Features
