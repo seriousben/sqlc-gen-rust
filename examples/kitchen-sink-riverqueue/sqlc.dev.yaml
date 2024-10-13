@@ -1,0 +1,30 @@
+version: "2"
+plugins:
+  - name: rust
+    wasm:
+      url: file://../../result/bin/sqlc-gen-rust.wasm
+sql:
+  - engine: "postgresql"
+    queries:
+      - queries/pg_misc.sql
+      - queries/river_client.sql
+      - queries/river_client_queue.sql
+      - queries/river_job.sql
+      - queries/river_job_copyfrom.sql
+      - queries/river_leader.sql
+      - queries/river_migration.sql
+      - queries/river_queue.sql
+    schema:
+      - queries/pg_misc.sql
+      - queries/river_client.sql
+      - queries/river_client_queue.sql
+      - queries/river_job.sql
+      - queries/river_leader.sql
+      - queries/river_migration.sql
+      - queries/river_queue.sql
+    codegen:
+      - plugin: rust
+        out: src
+        options:
+          driver: "sqlx"
+          debug: true

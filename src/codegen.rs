@@ -62,7 +62,7 @@ impl quote::ToTokens for GenStruct {
         eprintln!("GenStruct::ToTokens: {self:?}");
         let fields = self.fields.as_slice();
 
-        let struct_name = format_ident!("{}", ident::to_upper_camel(self.name.as_str()));
+        let struct_name = format_ident!("{}", self.name.as_str());
         quote::quote! {
             #[derive(Debug, Clone)]
             pub struct #struct_name {
@@ -95,10 +95,12 @@ impl<'query> quote::ToTokens for GenQuery<'query> {
         quote::quote! {
             #(#structs_)*
 
-            async fn #func_name(#params) -> Result<#return_tokens , Error> {
+            async fn #func_name(#params) -> Result<#return_tokens , Box<dyn std::error::Error>> {
                 let rec = sqlx::query!(
                     #sql
                 );
+
+                Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "not implemented")))
             }
 
         }
@@ -201,7 +203,7 @@ impl Generator {
                 }
             } else {
                 let (ret_struct, _) = self.find_or_create_struct(
-                    format!("{}Row", query.name).as_str(),
+                    ident::to_upper_camel(format!("{}Row", query.name)).as_str(),
                     query.columns.as_slice(),
                 );
                 new_structs.push(ret_struct);

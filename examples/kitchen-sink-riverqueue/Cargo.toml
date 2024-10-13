@@ -1,0 +1,9 @@
+[package]
+name = "kitchen-sink-riverqueue"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = "0.4.38"
+serde_json = "1.0.128"
+sqlx = "0.8.2"

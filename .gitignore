@@ -6,3 +6,6 @@
 
 # direnv folder
 .direnv
+
+# makefile sentinel file to workaround nix mtime set to zero
+.wasm.build

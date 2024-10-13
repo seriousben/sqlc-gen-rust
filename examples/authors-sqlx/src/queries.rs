@@ -5,13 +5,14 @@ pub struct GetAuthorRow {
     name: String,
     bio: Option<String>,
 }
-async fn get_author(id: i64) -> Result<GetAuthorRow, Error> {
+async fn get_author(id: i64) -> Result<GetAuthorRow, Box<dyn std::error::Error>> {
     let rec = sqlx::query!(
         "
 SELECT id, name, bio FROM authors
 WHERE id = $1 LIMIT 1
 "
     );
+    Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "not implemented")))
 }
 #[derive(Debug, Clone)]
 pub struct ListAuthorsRow {
@@ -19,11 +20,12 @@ pub struct ListAuthorsRow {
     name: String,
     bio: Option<String>,
 }
-async fn list_authors() -> Result<Vec<ListAuthorsRow>, Error> {
+async fn list_authors() -> Result<Vec<ListAuthorsRow>, Box<dyn std::error::Error>> {
     let rec = sqlx::query!("
 SELECT id, name, bio FROM authors
 ORDER BY name
 ");
+    Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "not implemented")))
 }
 #[derive(Debug, Clone)]
 pub struct CreateAuthorRow {
@@ -34,7 +36,7 @@ pub struct CreateAuthorRow {
 async fn create_author(
     name: String,
     bio: Option<String>,
-) -> Result<CreateAuthorRow, Error> {
+) -> Result<CreateAuthorRow, Box<dyn std::error::Error>> {
     let rec = sqlx::query!(
         "
 INSERT INTO authors (
@@ -45,12 +47,14 @@ INSERT INTO authors (
 RETURNING id, name, bio
 "
     );
+    Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "not implemented")))
 }
 #[derive(Debug, Clone)]
 pub struct DeleteAuthorRow {}
-async fn delete_author(id: i64) -> Result<DeleteAuthorRow, Error> {
+async fn delete_author(id: i64) -> Result<DeleteAuthorRow, Box<dyn std::error::Error>> {
     let rec = sqlx::query!("
 DELETE FROM authors
 WHERE id = $1
 ");
+    Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "not implemented")))
 }

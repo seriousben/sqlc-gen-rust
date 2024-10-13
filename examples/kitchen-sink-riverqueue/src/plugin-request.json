@@ -3,26 +3,26 @@
     "version": "2",
     "engine": "postgresql",
     "schema": [
-      "pg_misc.sql",
-      "river_client.sql",
-      "river_client_queue.sql",
-      "river_job.sql",
-      "river_leader.sql",
-      "river_migration.sql",
-      "river_queue.sql"
+      "queries/pg_misc.sql",
+      "queries/river_client.sql",
+      "queries/river_client_queue.sql",
+      "queries/river_job.sql",
+      "queries/river_leader.sql",
+      "queries/river_migration.sql",
+      "queries/river_queue.sql"
     ],
     "queries": [
-      "pg_misc.sql",
-      "river_client.sql",
-      "river_client_queue.sql",
-      "river_job.sql",
-      "river_job_copyfrom.sql",
-      "river_leader.sql",
-      "river_migration.sql",
-      "river_queue.sql"
+      "queries/pg_misc.sql",
+      "queries/river_client.sql",
+      "queries/river_client_queue.sql",
+      "queries/river_job.sql",
+      "queries/river_job_copyfrom.sql",
+      "queries/river_leader.sql",
+      "queries/river_migration.sql",
+      "queries/river_queue.sql"
     ],
     "codegen": {
-      "out": ".",
+      "out": "src",
       "plugin": "rust",
       "options": [
         123,
@@ -59,7 +59,7 @@
       "env": [],
       "process": null,
       "wasm": {
-        "url": "file://../../../result/bin/sqlc-gen-rust.wasm",
+        "url": "file://../../result/bin/sqlc-gen-rust.wasm",
         "sha256": ""
       }
     }

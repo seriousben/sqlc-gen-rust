@@ -9,7 +9,7 @@
       "schema/postgresql/query.sql"
     ],
     "codegen": {
-      "out": "sqlx/src/db",
+      "out": "src",
       "plugin": "rust",
       "options": [
         123,

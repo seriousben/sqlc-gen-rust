@@ -29,7 +29,12 @@
           rustToolchain
           protobuf_28
         ];
-        buildInputs = with pkgs; [ openssl ];
+        buildInputs = with pkgs; [
+          openssl
+          darwin.apple_sdk.frameworks.Security
+          pkg-config
+          darwin.apple_sdk.frameworks.SystemConfiguration
+        ];
       in
       with pkgs;
       {

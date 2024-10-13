@@ -1,14 +1,13 @@
-examples: examples/authors examples/kitchen-sink-riverqueue
+EXAMPLES = $(wildcard examples/*)
 
-examples/authors: $(shell find examples/authors -type f)
-	@cd examples/authors && sqlc -f sqlc.dev.yaml generate
+examples: $(EXAMPLES)
 
-examples/kitchen-sink-riverqueue: $(shell find examples/kitchen-sink-riverqueue -type f)
-	@cd examples/kitchen-sink-riverqueue/queries && sqlc -f sqlc.dev.yaml generate
+$(EXAMPLES): $(shell find $@ -type f) .wasm.build
+	@cd $@ && sqlc -f sqlc.dev.yaml generate && cargo build
 
-.PHONY: build
-build: $(shell find src -type f)
+.wasm.build: $(shell find src -type f)
 	nix build
+	echo "sentinel file" > .wasm.build
 
-.PHONY: examples
+.PHONY: default
 default: examples

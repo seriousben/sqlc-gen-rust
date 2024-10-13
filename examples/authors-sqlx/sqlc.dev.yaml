@@ -9,7 +9,7 @@ sql:
     engine: "postgresql"
     codegen:
       - plugin: rust
-        out: sqlx/src/db
+        out: src
         options:
           driver: "sqlx"
           debug: true

@@ -7,7 +7,7 @@ version: "2"
 plugins:
   - name: rust
     wasm:
-      url: https://github.com/seriousben/sqlc-gen-rust/releases/download/V{VERSION}/sqlc-gen-RUST.wasm
+      url: https://github.com/seriousben/sqlc-gen-rust/releases/download/v{VERSION}/sqlc-gen-rust.wasm
       sha256: {VERSION_SHA256}
 sql:
   - schema: "schema/postgresql/schema.sql"
@@ -20,29 +20,28 @@ sql:
           driver: "sqlx"
 ```
 
-
-## Roadmap to next release
+## Road to first release
 
 ### Features
 
 - [ ] Support for all sqlc cmd types
-- [ ] First release
 - [ ] High level documentation
-
+- [ ] Fully working axum-social-with-tests example
 
 ### Chores
 
+- [ ] Release tooling
 - [ ] GitHub Actions to test and manage releases
 - [ ] Make examples runnable and testable
 
 ## Future
 
+- Transaction support
 - SQLite support
 - MySQL support
-- Create structs representing full tables
-- Use table structs in params and return values instead of using one off structts
+- Improve codegen comments
+- Using structs representing full tables
+- Make SQL Queries public
 - Support customizing async runtime
 - Allow customizing data types
 - Allow renaming and overriding types
-- Make SQL Queries public
-- Improve codegen comments
