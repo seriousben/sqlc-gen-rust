@@ -31,7 +31,7 @@ async fn test_create_user(db: PgPool) {
     assert_eq!(resp1.status(), StatusCode::NO_CONTENT);
 
     // Username taken
-    let mut resp2 = app
+    let resp2 = app
         .borrow_mut()
         .oneshot(Request::post("/v1/user").json(json! {{
             "username": "alice",
@@ -42,11 +42,11 @@ async fn test_create_user(db: PgPool) {
 
     assert_eq!(resp2.status(), StatusCode::CONFLICT);
 
-    let resp2_json = response_json(&mut resp2).await;
+    let resp2_json = response_json(resp2).await;
     assert_eq!(resp2_json["message"], "username taken");
 
     // Invalid username
-    let mut resp3 = app
+    let resp3 = app
         .borrow_mut()
         .oneshot(Request::post("/v1/user").json(json! {{
             "username": "definitely an invalid username",
@@ -57,7 +57,7 @@ async fn test_create_user(db: PgPool) {
 
     assert_eq!(resp3.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
-    let resp3_json = response_json(&mut resp3).await;
+    let resp3_json = response_json(resp3).await;
 
     assert_eq!(resp3_json["message"], "validation error in request body");
     assert!(
@@ -67,7 +67,7 @@ async fn test_create_user(db: PgPool) {
     );
 
     // Invalid password
-    let mut resp4 = app
+    let resp4 = app
         .borrow_mut()
         .oneshot(Request::post("/v1/user").json(json! {{
             "username": "bobby123",
@@ -78,7 +78,7 @@ async fn test_create_user(db: PgPool) {
 
     assert_eq!(resp4.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
-    let resp4_json = response_json(&mut resp4).await;
+    let resp4_json = response_json(resp4).await;
 
     assert_eq!(resp4_json["message"], "validation error in request body");
     assert!(

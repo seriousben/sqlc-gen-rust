@@ -18,7 +18,7 @@ async fn test_create_comment(db: PgPool) {
     let mut app = http::app(db);
 
     // Happy path!
-    let mut resp1 = app
+    let resp1 = app
         .borrow_mut()
         .oneshot(
             Request::post("/v1/post/d9ca2672-24c5-4442-b32f-cd717adffbaa/comment").json(json! {
@@ -36,7 +36,7 @@ async fn test_create_comment(db: PgPool) {
 
     assert_eq!(resp1.status(), StatusCode::OK);
 
-    let resp1_json = response_json(&mut resp1).await;
+    let resp1_json = response_json(resp1).await;
 
     assert_eq!(resp1_json["username"], "bob");
     assert_eq!(resp1_json["content"], "lol bet ur still bad, 1v1 me");
@@ -46,7 +46,7 @@ async fn test_create_comment(db: PgPool) {
     let _created_at = expect_rfc3339_timestamp(&resp1_json["createdAt"]);
 
     // Incorrect username
-    let mut resp2 = app
+    let resp2 = app
         .borrow_mut()
         .oneshot(
             Request::post("/v1/post/d9ca2672-24c5-4442-b32f-cd717adffbaa/comment").json(json! {
@@ -64,11 +64,11 @@ async fn test_create_comment(db: PgPool) {
 
     assert_eq!(resp2.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
-    let resp2_json = response_json(&mut resp2).await;
+    let resp2_json = response_json(resp2).await;
     assert_eq!(resp2_json["message"], "invalid username/password");
 
     // Incorrect password
-    let mut resp3 = app
+    let resp3 = app
         .borrow_mut()
         .oneshot(
             Request::post("/v1/post/d9ca2672-24c5-4442-b32f-cd717adffbaa/comment").json(json! {
@@ -86,7 +86,7 @@ async fn test_create_comment(db: PgPool) {
 
     assert_eq!(resp3.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
-    let resp3_json = response_json(&mut resp3).await;
+    let resp3_json = response_json(resp3).await;
     assert_eq!(resp3_json["message"], "invalid username/password");
 }
 
@@ -95,7 +95,7 @@ async fn test_list_comments(db: PgPool) {
     let mut app = http::app(db);
 
     // This only has the happy path.
-    let mut resp = app
+    let resp = app
         .borrow_mut()
         .oneshot(Request::get("/v1/post/d9ca2672-24c5-4442-b32f-cd717adffbaa/comment").empty_body())
         .await
@@ -103,7 +103,7 @@ async fn test_list_comments(db: PgPool) {
 
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let resp_json = response_json(&mut resp).await;
+    let resp_json = response_json(resp).await;
 
     let comments = resp_json
         .as_array()
@@ -128,7 +128,7 @@ async fn test_list_comments(db: PgPool) {
         "comments must be assorted in ascending order"
     );
 
-    let mut resp = app
+    let resp = app
         .borrow_mut()
         .oneshot(Request::get("/v1/post/7e3d4d16-a35e-46ba-8223-b4f1debbfbfe/comment").empty_body())
         .await
@@ -136,7 +136,7 @@ async fn test_list_comments(db: PgPool) {
 
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let resp_json = response_json(&mut resp).await;
+    let resp_json = response_json(resp).await;
 
     let comments = resp_json
         .as_array()

@@ -2,6 +2,8 @@
 
 https://github.com/sqlc-dev/sqlc Rust plugin to generate https://github.com/launchbadge/sqlx models and queries from SQL migrations, schema, queries.
 
+## Usage
+
 ```yml
 version: "2"
 plugins:
@@ -24,9 +26,10 @@ sql:
 
 ### Features
 
-- [ ] Support for all sqlc cmd types
 - [ ] High level documentation
-- [ ] Fully working axum-social-with-tests example
+- [ ] `:execrows` support
+- [ ] `:execresult` support
+- [ ] `:copyfrom` support
 
 ### Chores
 
@@ -36,12 +39,13 @@ sql:
 
 ## Future
 
+- `fetch_optional` support by exposing two queries functions for `:one` cmd
 - Transaction support
 - SQLite support
 - MySQL support
 - Improve codegen comments
 - Using structs representing full tables
-- Make SQL Queries public
-- Support customizing async runtime
+- Make SQL query strings public
 - Allow customizing data types
 - Allow renaming and overriding types
+- Output queries in multiple files

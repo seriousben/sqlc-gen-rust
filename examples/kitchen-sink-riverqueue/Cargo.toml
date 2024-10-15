@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 chrono = "0.4.38"
 serde_json = "1.0.128"
-sqlx = "0.8.2"
+sqlx = { version = "0.8.2" , features = [ "runtime-tokio", "tls-rustls-ring", "postgres", "time", "uuid", "chrono", "json", "any", "macros" ] }
+sqlx-core = { version = "0.8.2" }

@@ -18,7 +18,7 @@ async fn test_create_post(db: PgPool) {
     let mut app = http::app(db);
 
     // Happy path!
-    let mut resp1 = app
+    let resp1 = app
         .borrow_mut()
         .oneshot(Request::post("/v1/post").json(json! {
             {
@@ -34,7 +34,7 @@ async fn test_create_post(db: PgPool) {
 
     assert_eq!(resp1.status(), StatusCode::OK);
 
-    let resp1_json = response_json(&mut resp1).await;
+    let resp1_json = response_json(resp1).await;
 
     assert_eq!(resp1_json["username"], "alice");
     assert_eq!(resp1_json["content"], "This new computer is blazing fast!");
@@ -43,7 +43,7 @@ async fn test_create_post(db: PgPool) {
     let _created_at = expect_rfc3339_timestamp(&resp1_json["createdAt"]);
 
     // Incorrect username
-    let mut resp2 = app
+    let resp2 = app
         .borrow_mut()
         .oneshot(Request::post("/v1/post").json(json! {
             {
@@ -59,11 +59,11 @@ async fn test_create_post(db: PgPool) {
 
     assert_eq!(resp2.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
-    let resp2_json = response_json(&mut resp2).await;
+    let resp2_json = response_json(resp2).await;
     assert_eq!(resp2_json["message"], "invalid username/password");
 
     // Incorrect password
-    let mut resp3 = app
+    let resp3 = app
         .borrow_mut()
         .oneshot(Request::post("/v1/post").json(json! {
             {
@@ -79,21 +79,21 @@ async fn test_create_post(db: PgPool) {
 
     assert_eq!(resp3.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
-    let resp3_json = response_json(&mut resp3).await;
+    let resp3_json = response_json(resp3).await;
     assert_eq!(resp3_json["message"], "invalid username/password");
 }
 
 #[sqlx::test(fixtures("users", "posts"))]
 async fn test_list_posts(db: PgPool) {
     // This only has the happy path.
-    let mut resp = http::app(db)
+    let resp = http::app(db)
         .oneshot(Request::get("/v1/post").empty_body())
         .await
         .unwrap();
 
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let resp_json = response_json(&mut resp).await;
+    let resp_json = response_json(resp).await;
 
     let posts = resp_json
         .as_array()

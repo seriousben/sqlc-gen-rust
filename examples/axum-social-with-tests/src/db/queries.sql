@@ -1,4 +1,4 @@
--- :name CreatePost :exec
+-- name: CreatePost :one
 with inserted_post as (
     insert into post(user_id, content)
     values ($1, $2)
@@ -8,13 +8,13 @@ select post_id, username, content, created_at
 from inserted_post
 inner join "user" using (user_id);
 
--- :name GetPosts :many
+-- name: GetPosts :many
 select post_id, username, content, created_at
 from post
 inner join "user" using (user_id)
 order by created_at desc;
 
--- name: CreateComment :exec
+-- name: CreateComment :one
 with inserted_comment as (
     insert into comment(user_id, post_id, content)
     values ($1, $2, $3)

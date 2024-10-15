@@ -417,9 +417,298 @@
   },
   "queries": [
     {
+      "text": "with inserted_post as (\n    insert into post(user_id, content)\n    values ($1, $2)\n    returning post_id, user_id, content, created_at\n)\nselect post_id, username, content, created_at\nfrom inserted_post\ninner join \"user\" using (user_id)",
+      "name": "CreatePost",
+      "cmd": ":one",
+      "columns": [
+        {
+          "name": "post_id",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": false,
+          "scope": "",
+          "table": {
+            "catalog": "",
+            "schema": "",
+            "name": "inserted_post"
+          },
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "uuid"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "post_id",
+          "unsigned": false,
+          "array_dims": 0
+        },
+        {
+          "name": "username",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": false,
+          "scope": "",
+          "table": {
+            "catalog": "",
+            "schema": "",
+            "name": "user"
+          },
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "text"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "username",
+          "unsigned": false,
+          "array_dims": 0
+        },
+        {
+          "name": "content",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": false,
+          "scope": "",
+          "table": {
+            "catalog": "",
+            "schema": "",
+            "name": "inserted_post"
+          },
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "text"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "content",
+          "unsigned": false,
+          "array_dims": 0
+        },
+        {
+          "name": "created_at",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": false,
+          "scope": "",
+          "table": {
+            "catalog": "",
+            "schema": "",
+            "name": "inserted_post"
+          },
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "timestamptz"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "created_at",
+          "unsigned": false,
+          "array_dims": 0
+        }
+      ],
+      "params": [
+        {
+          "number": 1,
+          "column": {
+            "name": "user_id",
+            "not_null": true,
+            "is_array": false,
+            "comment": "",
+            "length": -1,
+            "is_named_param": false,
+            "is_func_call": false,
+            "scope": "",
+            "table": {
+              "catalog": "",
+              "schema": "public",
+              "name": "post"
+            },
+            "table_alias": "",
+            "type": {
+              "catalog": "",
+              "schema": "",
+              "name": "uuid"
+            },
+            "is_sqlc_slice": false,
+            "embed_table": null,
+            "original_name": "user_id",
+            "unsigned": false,
+            "array_dims": 0
+          }
+        },
+        {
+          "number": 2,
+          "column": {
+            "name": "content",
+            "not_null": true,
+            "is_array": false,
+            "comment": "",
+            "length": -1,
+            "is_named_param": false,
+            "is_func_call": false,
+            "scope": "",
+            "table": {
+              "catalog": "",
+              "schema": "public",
+              "name": "post"
+            },
+            "table_alias": "",
+            "type": {
+              "catalog": "",
+              "schema": "",
+              "name": "text"
+            },
+            "is_sqlc_slice": false,
+            "embed_table": null,
+            "original_name": "content",
+            "unsigned": false,
+            "array_dims": 0
+          }
+        }
+      ],
+      "comments": [],
+      "filename": "queries.sql",
+      "insert_into_table": null
+    },
+    {
+      "text": "select post_id, username, content, created_at\nfrom post\ninner join \"user\" using (user_id)\norder by created_at desc",
+      "name": "GetPosts",
+      "cmd": ":many",
+      "columns": [
+        {
+          "name": "post_id",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": false,
+          "scope": "",
+          "table": {
+            "catalog": "",
+            "schema": "",
+            "name": "post"
+          },
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "uuid"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "post_id",
+          "unsigned": false,
+          "array_dims": 0
+        },
+        {
+          "name": "username",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": false,
+          "scope": "",
+          "table": {
+            "catalog": "",
+            "schema": "",
+            "name": "user"
+          },
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "text"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "username",
+          "unsigned": false,
+          "array_dims": 0
+        },
+        {
+          "name": "content",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": false,
+          "scope": "",
+          "table": {
+            "catalog": "",
+            "schema": "",
+            "name": "post"
+          },
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "text"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "content",
+          "unsigned": false,
+          "array_dims": 0
+        },
+        {
+          "name": "created_at",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": false,
+          "scope": "",
+          "table": {
+            "catalog": "",
+            "schema": "",
+            "name": "post"
+          },
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "timestamptz"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "created_at",
+          "unsigned": false,
+          "array_dims": 0
+        }
+      ],
+      "params": [],
+      "comments": [],
+      "filename": "queries.sql",
+      "insert_into_table": null
+    },
+    {
       "text": "with inserted_comment as (\n    insert into comment(user_id, post_id, content)\n    values ($1, $2, $3)\n    returning comment_id, user_id, content, created_at\n)\nselect comment_id, username, content, created_at\nfrom inserted_comment\ninner join \"user\" using (user_id)",
       "name": "CreateComment",
-      "cmd": ":exec",
+      "cmd": ":one",
       "columns": [
         {
           "name": "comment_id",

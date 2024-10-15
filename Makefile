@@ -9,5 +9,9 @@ $(EXAMPLES): $(shell find $@ -type f) .wasm.build
 	nix build
 	echo "sentinel file" > .wasm.build
 
+.PHONY: dev/psql
+dev/psql:
+	psql -d postgresql://postgres:postgres@localhost/app
+
 .PHONY: default
 default: examples

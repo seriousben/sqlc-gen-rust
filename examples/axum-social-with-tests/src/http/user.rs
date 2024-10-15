@@ -6,10 +6,11 @@ use regex::Regex;
 use std::time::Duration;
 
 use serde::Deserialize;
-use sqlx::{PgExecutor, PgPool};
+use sqlx::PgPool;
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::db::queries;
 use crate::http::{Error, Result};
 
 pub type UserId = Uuid;
@@ -41,23 +42,14 @@ async fn create_user(db: Extension<PgPool>, Json(req): Json<UserAuth>) -> Result
     // It would be irresponsible to store passwords in plaintext, however.
     let password_hash = crate::password::hash(password).await?;
 
-    sqlx::query!(
-        // language=PostgreSQL
-        r#"
-            insert into "user"(username, password_hash)
-            values ($1, $2)
-        "#,
-        username,
-        password_hash
-    )
-    .execute(&*db)
-    .await
-    .map_err(|e| match e {
-        sqlx::Error::Database(dbe) if dbe.constraint() == Some("user_username_key") => {
-            Error::Conflict("username taken".into())
-        }
-        _ => e.into(),
-    })?;
+    queries::create_user(&*db, username, password_hash)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::Database(dbe) if dbe.constraint() == Some("user_username_key") => {
+                Error::Conflict("username taken".into())
+            }
+            _ => e.into(),
+        })?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -65,21 +57,28 @@ async fn create_user(db: Extension<PgPool>, Json(req): Json<UserAuth>) -> Result
 impl UserAuth {
     // NOTE: normally we wouldn't want to verify the username and password every time,
     // but persistent sessions would have complicated the example.
-    pub async fn verify(self, db: impl PgExecutor<'_> + Send) -> Result<UserId> {
+    pub async fn verify<'e>(
+        self,
+        db: impl sqlx::Executor<'e, Database = sqlx::Postgres>,
+    ) -> Result<UserId> {
         self.validate()?;
 
-        let maybe_user = sqlx::query!(
-            r#"select user_id, password_hash from "user" where username = $1"#,
-            self.username
-        )
-        .fetch_optional(db)
-        .await?;
+        let user_res = queries::get_user_by_username(db, self.username).await;
 
-        if let Some(user) = maybe_user {
-            let verified = crate::password::verify(self.password, user.password_hash).await?;
+        match user_res {
+            Ok(user) => {
+                let verified = crate::password::verify(self.password, user.password_hash).await?;
 
-            if verified {
-                return Ok(user.user_id);
+                if verified {
+                    return Ok(user.user_id);
+                }
+            }
+            Err(e) => {
+                if let sqlx::Error::RowNotFound = e {
+                    // no-op
+                } else {
+                    return Err(e.into());
+                }
             }
         }
 
@@ -87,7 +86,6 @@ impl UserAuth {
         let sleep_duration =
             rand::thread_rng().gen_range(Duration::from_millis(100)..=Duration::from_millis(500));
         tokio::time::sleep(sleep_duration).await;
-
         Err(Error::UnprocessableEntity(
             "invalid username/password".into(),
         ))

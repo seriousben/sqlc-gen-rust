@@ -3,15 +3,14 @@ use axum::{Extension, Json, Router};
 use axum::routing::get;
 
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
 
 use crate::http::user::UserAuth;
 use sqlx::PgPool;
 use validator::Validate;
 
+use crate::db::queries;
 use crate::http::Result;
 
-use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
 mod comment;
@@ -37,9 +36,29 @@ struct Post {
     post_id: Uuid,
     username: String,
     content: String,
-    // `OffsetDateTime`'s default serialization format is not standard.
-    #[serde_as(as = "Rfc3339")]
-    created_at: OffsetDateTime,
+    created_at: String,
+}
+
+impl From<queries::CreatePostRow> for Post {
+    fn from(row: queries::CreatePostRow) -> Self {
+        Post {
+            post_id: row.post_id,
+            username: row.username,
+            content: row.content,
+            created_at: row.created_at.to_rfc3339(),
+        }
+    }
+}
+
+impl From<queries::GetPostsRow> for Post {
+    fn from(row: queries::GetPostsRow) -> Self {
+        Post {
+            post_id: row.post_id,
+            username: row.username,
+            content: row.content,
+            created_at: row.created_at.to_rfc3339(),
+        }
+    }
 }
 
 // #[axum::debug_handler] // very useful!
@@ -50,44 +69,18 @@ async fn create_post(
     req.validate()?;
     let user_id = req.auth.verify(&*db).await?;
 
-    let post = sqlx::query_as!(
-        Post,
-        // language=PostgreSQL
-        r#"
-            with inserted_post as (
-                insert into post(user_id, content)
-                values ($1, $2)
-                returning post_id, user_id, content, created_at
-            )
-            select post_id, username, content, created_at
-            from inserted_post
-            inner join "user" using (user_id)
-        "#,
-        user_id,
-        req.content
-    )
-    .fetch_one(&*db)
-    .await?;
+    let post = queries::create_post(&*db, user_id, req.content).await?;
 
-    Ok(Json(post))
+    Ok(Json(Post::from(post)))
 }
 
 /// Returns posts in descending chronological order.
 async fn get_posts(db: Extension<PgPool>) -> Result<Json<Vec<Post>>> {
     // Note: normally you'd want to put a `LIMIT` on this as well,
     // though that would also necessitate implementing pagination.
-    let posts = sqlx::query_as!(
-        Post,
-        // language=PostgreSQL
-        r#"
-            select post_id, username, content, created_at
-            from post
-            inner join "user" using (user_id)
-            order by created_at desc
-        "#
-    )
-    .fetch_all(&*db)
-    .await?;
+    let posts = queries::get_posts(&*db).await?;
 
-    Ok(Json(posts))
+    let posts_api: Vec<Post> = posts.into_iter().map(Post::from).collect();
+
+    Ok(Json(posts_api))
 }
