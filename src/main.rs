@@ -1,7 +1,8 @@
 #![warn(clippy::pedantic)]
+#![allow(clippy::similar_names)]
 use std::error::Error;
+use std::io;
 use std::io::prelude::*;
-use std::{env, io};
 
 use prost::Message;
 

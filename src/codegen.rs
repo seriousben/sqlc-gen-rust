@@ -45,7 +45,7 @@ impl quote::ToTokens for GenField {
         eprintln!("GenField::ToTokens: {self:?}");
         let field_name = format_ident!("{}", ident::to_snake(self.col.name.as_str()));
         let field_type = convert_postgres_type(&self.col);
-        quote::quote! { #field_name: #field_type }.to_tokens(tokens)
+        quote::quote! { #field_name: #field_type }.to_tokens(tokens);
     }
 }
 
@@ -162,7 +162,15 @@ impl<'query> quote::ToTokens for GenQuery<'query> {
 
                 Ok(())
             },
-            ":execresult" | ":execrows" | ":copyfrom" => quote::quote! {
+            ":execrows" => quote::quote! {
+                let rec = sqlx::#query_func_tokens(#sql)
+                #(#params_bind_tokens)*
+                .#exec_func_tokens(db)
+                .await?;
+
+                Ok(rec.rows_affected())
+            },
+            ":execresult" | ":copyfrom" => quote::quote! {
                 sqlx::#query_func_tokens(#sql)
                 #(#params_bind_tokens)*
                 .#exec_func_tokens(db)
@@ -239,6 +247,7 @@ impl Generator {
         (self.structs.last().expect("last struct should exist"), true)
     }
 
+    #[allow(clippy::too_many_lines)]
     fn gen_queries_file(&self) -> String {
         let queries = self.req.queries.iter().map(|query| {
             let mut new_structs = Vec::new();
@@ -278,16 +287,24 @@ impl Generator {
                 })
                 .collect();
             let return_name = if query_cols.is_empty() {
-                quote::quote! { () }
+                if query.cmd == ":execresult" {
+                    panic!(":execresult not supported");
+                } else if query.cmd == ":execrows" {
+                    quote::quote! { u64 }
+                } else {
+                    quote::quote! { () }
+                }
             } else if query_cols.len() == 1 {
                 let col = query_cols.first().expect("first col should exist");
                 convert_postgres_type(col)
             } else {
-                let (ret_struct, _) = self.find_or_create_struct(
+                let (ret_struct, new) = self.find_or_create_struct(
                     ident::to_upper_camel(format!("{}Row", query.name)).as_str(),
                     query_cols.as_slice(),
                 );
-                new_structs.push(ret_struct);
+                if new {
+                    new_structs.push(ret_struct);
+                }
                 let ret_ident = format_ident!("{}", ret_struct.name.as_str());
                 if query.cmd == ":many" {
                     let vec_ident = format_ident!("{}", "Vec");

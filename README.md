@@ -27,8 +27,6 @@ sql:
 ### Features
 
 - [ ] High level documentation
-- [ ] `:execrows` support
-- [ ] `:execresult` support
 - [ ] `:copyfrom` support
 
 ### Chores

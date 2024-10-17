@@ -751,11 +751,11 @@ pub struct JobInsertFastManyNoReturningInfo {
 pub async fn job_insert_fast_many_no_returning<'e, E>(
     db: E,
     job_insert_fast_many_no_returning_info: JobInsertFastManyNoReturningInfo,
-) -> Result<(), sqlx::Error>
+) -> Result<u64, sqlx::Error>
 where
     E: sqlx::Executor<'e, Database = sqlx::Postgres>,
 {
-    sqlx::query(
+    let rec = sqlx::query(
             "
 INSERT INTO river_job(
     args,
@@ -808,9 +808,7 @@ DO NOTHING
         .bind(job_insert_fast_many_no_returning_info.unique_states)
         .execute(db)
         .await?;
-    Err(sqlx::Error::TypeNotFound {
-        type_name: String::from(":execrows"),
-    })
+    Ok(rec.rows_affected())
 }
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct JobInsertFullInfo {
@@ -1546,11 +1544,11 @@ pub async fn leader_attempt_elect<'e, E>(
     db: E,
     leader_id: String,
     ttl: chrono::Duration,
-) -> Result<(), sqlx::Error>
+) -> Result<u64, sqlx::Error>
 where
     E: sqlx::Executor<'e, Database = sqlx::Postgres>,
 {
-    sqlx::query(
+    let rec = sqlx::query(
             "
 INSERT INTO river_leader(leader_id, elected_at, expires_at)
     VALUES ($1, now(), now() + $2::interval)
@@ -1562,19 +1560,17 @@ ON CONFLICT (name)
         .bind(ttl)
         .execute(db)
         .await?;
-    Err(sqlx::Error::TypeNotFound {
-        type_name: String::from(":execrows"),
-    })
+    Ok(rec.rows_affected())
 }
 pub async fn leader_attempt_reelect<'e, E>(
     db: E,
     leader_id: String,
     ttl: chrono::Duration,
-) -> Result<(), sqlx::Error>
+) -> Result<u64, sqlx::Error>
 where
     E: sqlx::Executor<'e, Database = sqlx::Postgres>,
 {
-    sqlx::query(
+    let rec = sqlx::query(
             "
 INSERT INTO river_leader(leader_id, elected_at, expires_at)
     VALUES ($1, now(), now() + $2::interval)
@@ -1589,24 +1585,20 @@ ON CONFLICT (name)
         .bind(ttl)
         .execute(db)
         .await?;
-    Err(sqlx::Error::TypeNotFound {
-        type_name: String::from(":execrows"),
-    })
+    Ok(rec.rows_affected())
 }
-pub async fn leader_delete_expired<'e, E>(db: E) -> Result<(), sqlx::Error>
+pub async fn leader_delete_expired<'e, E>(db: E) -> Result<u64, sqlx::Error>
 where
     E: sqlx::Executor<'e, Database = sqlx::Postgres>,
 {
-    sqlx::query("
+    let rec = sqlx::query("
 DELETE FROM river_leader
 WHERE expires_at < now()
 "
     )
         .execute(db)
         .await?;
-    Err(sqlx::Error::TypeNotFound {
-        type_name: String::from(":execrows"),
-    })
+    Ok(rec.rows_affected())
 }
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct LeaderGetElectedLeaderRow {
@@ -1677,11 +1669,11 @@ pub async fn leader_resign<'e, E>(
     db: E,
     leader_id: String,
     leadership_topic: String,
-) -> Result<(), sqlx::Error>
+) -> Result<u64, sqlx::Error>
 where
     E: sqlx::Executor<'e, Database = sqlx::Postgres>,
 {
-    sqlx::query(
+    let rec = sqlx::query(
             "
 WITH currently_held_leaders AS (
   SELECT elected_at, expires_at, leader_id, name
@@ -1703,9 +1695,7 @@ DELETE FROM river_leader USING notified_resignations
         .bind(leadership_topic)
         .execute(db)
         .await?;
-    Err(sqlx::Error::TypeNotFound {
-        type_name: String::from(":execrows"),
-    })
+    Ok(rec.rows_affected())
 }
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct RiverMigrationDeleteAssumingMainManyRow {
